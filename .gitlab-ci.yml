@@ -29,17 +29,17 @@ deploy:
     - kubectl config set-credentials ci --token=$K8S_CI_TOKEN
     - kubectl config set-context ci --cluster=k8s --user=ci
     - kubectl config use-context ci
-    - if [ "$(helm -n $CI_PROJECT_PATH_SLUG-$CI_ENVIRONMENT_NAME list | tail -n-1 | wc -l)" != "0" ] ; then
+    - if [ "$(helm -n $CI_PROJECT_NAMESPACE list | tail -n-1 | wc -l)" != "0" ] ; then
         helm upgrade --install
         --set app.repository=$CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
         --set app.tag=$CI_COMMIT_REF_SLUG.$CI_PIPELINE_ID
-        --namespace $CI_PROJECT_PATH_SLUG-$CI_ENVIRONMENT_NAME
+        --namespace $CI_PROJECT_NAMESPACE
         $CI_PROJECT_PATH_SLUG .helm;
       else
         helm install
         --set app.repository=$CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
         --set app.tag=$CI_COMMIT_REF_SLUG.$CI_PIPELINE_ID
-        --create-namespace --namespace $CI_PROJECT_PATH_SLUG-$CI_ENVIRONMENT_NAME
+        --create-namespace --namespace $CI_PROJECT_NAMESPACE
         $CI_PROJECT_PATH_SLUG .helm;
       fi
   only:
