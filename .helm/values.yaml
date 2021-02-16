@@ -1,0 +1,11 @@
+app:
+  repository: <is set in .gitlab-ci.yml>
+  tag: <is set in .gitlab-ci.yml>
+  pullPolicy: Always
+  replicaCount: 1
+  port: 8000
+
+ingress:
+  enabled: true
+  host: "cluster.hse.levinson.pro"
+  paths: ["/"]

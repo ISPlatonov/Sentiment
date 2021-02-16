@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: {{ .Chart.Name }}.{{ .Values.ingress.host }}-cert
+spec:
+  dnsNames:
+    - {{ .Chart.Name }}.{{ .Values.ingress.host }}
+  commonName: {{ .Chart.Name }}.{{ .Values.ingress.host }}
+  secretName: {{ .Chart.Name }}.{{ .Values.ingress.host }}-cert
+  issuerRef:
+    name: {{ .Chart.Name }}.letsencrypt
