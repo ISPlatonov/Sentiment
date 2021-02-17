@@ -16,10 +16,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - {{ .Chart.Name }}.{{ .Values.ingress.host }}
+        - {{ .Chart.Name }}.{{ .Release.Namespace }}.{{ .Values.ingress.host }}
       secretName: {{ .Chart.Name }}.{{ .Values.ingress.host }}-cert
   rules:
-    - host: {{ .Chart.Name }}.{{ .Values.ingress.host }}
+    - host: {{ .Chart.Name }}.{{ .Release.Namespace }}.{{ .Values.ingress.host }}
       http:
         paths:
           - path: /
