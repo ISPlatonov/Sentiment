@@ -27,8 +27,12 @@ from natasha import (
 
 class SentSegmenter:
         
-    def __init__(self, text):
+    def __init__(self, text, nsubj=[]):
         self.doc = Doc(text)
+        global_nsubj_list = [simple_segmenter(word) for word in nsubj]
+        self.nsubj = set([word for words in global_nsubj_list for word in words])
+        print('    self.nsubj:', self.nsubj)
+        print('    global_nsubj_list:', global_nsubj_list)
         #self.text = [token.text for token in self.doc.tokens]
         self.tokens_list = []
         self.tokenize()
@@ -158,6 +162,8 @@ class SentSegmenter:
                 nsubj_parts, nsubj_ids = self.sentence_division(root_part_text, param, used_ids=obj_ids, return_used_ids=True)
                 nsubj_word_bags = [[token.text for token in s if token.rel != 'punct'] for s in nsubj_parts]
                 nsubj_word_bag = [word for sent in nsubj_word_bags for word in sent]
+                if self.nsubj != set() and (self.nsubj & set(nsubj_word_bag)) == set():
+                    continue
                 nsubj_texts = [' '.join(part) for part in nsubj_word_bags]
 
                 # commit
@@ -232,6 +238,9 @@ def load_models():
     ner_tagger = NewsNERTagger(emb)
 
     names_extractor = NamesExtractor(morph_vocab)
+
+    global global_nsubj_list
+    global_nsubj_list = []
     # end Natasha
 
     ELMO_COMMENTS = ELMoEmbedder("./model_comments/", elmo_output_names=['elmo'])
@@ -248,7 +257,13 @@ def load_models():
         TEXT_TYPE_MODEL = pickle.load(file)
 
 
-def convert_text(text):
+def simple_segmenter(ls):
+    clean_words = [w.strip(',-\":;') for w in word_tokenize(ls)]
+    clean_words = [w for w in clean_words if w]
+    return clean_words[:MAX_LENGTH]
+
+
+def convert_text(text, nsubj=[]):
     # original segmenter
     '''
     clean_words = [w.strip(',-\":;') for w in word_tokenize(text)]
@@ -256,57 +271,74 @@ def convert_text(text):
     '''
     
     # new segmenter
-    
-    segmented_text = SentSegmenter(text)
+    #print('    nsubj:', nsubj)
+    segmented_text = SentSegmenter(text, nsubj)
 
     rels = ('nsubj', 'commit')
     clean_words = segmented_text.return_spec_rel(rels)
     
-    #print('clean words:', clean_words)
+    print('clean words:', clean_words)
 
     return clean_words[:MAX_LENGTH]
 
 
-def preprocessing(texts, elmo):
-    X = list(map(convert_text, texts))
+def preprocessing(texts, elmo, nsubj=[]):
+    #X = list(map(convert_text, texts))
+    X = [convert_text(text, nsubj) for text in texts]
     embs = elmo(X)
     return embs
 
 
-def get_pred(text_batch, elmo, cnn_model):
-    embs = preprocessing(text_batch, elmo)
+def get_pred(text_batch, elmo, cnn_model, nsubj=[]):
+    embs = preprocessing(text_batch, elmo, nsubj)
+    print('    embs:', embs)
+    print('    len embs:', len(embs))
     matrix = np.zeros((len(embs), MAX_LENGTH, EMB_SIZE))
     for idx in range(len(embs)):
         matrix[idx, :len(embs[idx])] = embs[idx]
     pred = cnn_model.predict(matrix)
+    print('    pred:', pred)
     return pred
 
 
-def get_sentiment(texts, bs):
+def get_sentiment(texts, bs, nsubj=[]):
     for i in range(int(np.ceil(len(texts) / bs))):
         text_batch = texts[i * bs:(i + 1) * bs]
+        # change from this
         answers = np.zeros((len(text_batch), len(CLASS_DICT)))
         types = np.array(TEXT_TYPE_MODEL.predict(text_batch))
         comments = np.array(text_batch)[types == 0]
         news = np.array(text_batch)[types == 1]
+        print('    text_batch:', text_batch)
 
         with SESS.graph.as_default():
             K.set_session(SESS)
             if len(comments):
-                pred_comments = get_pred(comments, ELMO_COMMENTS, COMMENTS_CNN_MODEL)
+                pred_comments = get_pred(comments, ELMO_COMMENTS, COMMENTS_CNN_MODEL, nsubj)
                 answers[types == 0] = pred_comments
+                print('    pred_comments:', pred_comments)
+                print('    comments:', comments)
             if len(news):
-                pred_news = get_pred(news, ELMO_NEWS, NEWS_CNN_MODEL)
+                pred_news = get_pred(news, ELMO_NEWS, NEWS_CNN_MODEL, nsubj)
+                print('    pred_news:', pred_news)
+                print('    news:', news)
                 answers[types == 1] = pred_news
+            
+        
 
         yield [{CLASS_DICT[class_id]: score for class_id, score in enumerate(row)} for row in answers]
+        # untill this
 
 
-def evaluate_sentiment(texts):
+def evaluate_sentiment(texts, nsubj=[]):
     results = []
-    for res in get_sentiment(texts, BATCH_SiZE):
+    for res in get_sentiment(texts, BATCH_SiZE, nsubj):
         results.extend(res)
     return results
+
+
+def get_nsubj():
+    return global_nsubj_list
 
 
 load_models()
