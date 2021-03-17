@@ -30,7 +30,11 @@ class SentSegmenter:
     def __init__(self, text, keywords=[]):
         self.doc = Doc(text)
         global_keywords_list = self.lemmatize(keywords)#[simple_segmenter(word) for word in keywords]
+<<<<<<< HEAD
         self.keywords = set(global_keywords_list)
+=======
+        self.keywords = set([word for words in global_keywords_list for word in words])
+>>>>>>> e2805dd312fb281af732abfd2486f8a0d7193643
         print('    self.keywords:', self.keywords)
         print('    global_keywords_list:', global_keywords_list)
         #self.text = [token.text for token in self.doc.tokens]
@@ -311,8 +315,13 @@ def preprocessing(texts, elmo, keywords=[]):
 
 def get_pred(text_batch, elmo, cnn_model, keywords=[]):
     embs = preprocessing(text_batch, elmo, keywords)
+<<<<<<< HEAD
     #print('    embs:', embs)
     #print('    len embs:', len(embs))
+=======
+    print('    embs:', embs)
+    print('    len embs:', len(embs))
+>>>>>>> e2805dd312fb281af732abfd2486f8a0d7193643
     matrix = np.zeros((len(embs), MAX_LENGTH, EMB_SIZE))
     for idx in range(len(embs)):
         matrix[idx, :len(embs[idx])] = embs[idx]
