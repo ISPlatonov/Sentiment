@@ -3,7 +3,7 @@ from typing import List, Dict
 from fastapi import FastAPI
 
 from .config import CLASS_DICT
-from .sentiment import evaluate_sentiment, get_nsubj
+from .sentiment import evaluate_sentiment
 
 app = FastAPI()
 
