@@ -27,12 +27,16 @@ from natasha import (
 
 class SentSegmenter:
         
-    def __init__(self, text, nsubj=[]):
+    def __init__(self, text, keywords=[]):
         self.doc = Doc(text)
-        global_nsubj_list = [simple_segmenter(word) for word in nsubj]
-        self.nsubj = set([word for words in global_nsubj_list for word in words])
-        print('    self.nsubj:', self.nsubj)
-        print('    global_nsubj_list:', global_nsubj_list)
+        global_keywords_list = self.lemmatize(keywords)#[simple_segmenter(word) for word in keywords]
+<<<<<<< HEAD
+        self.keywords = set(global_keywords_list)
+=======
+        self.keywords = set([word for words in global_keywords_list for word in words])
+>>>>>>> e2805dd312fb281af732abfd2486f8a0d7193643
+        print('    self.keywords:', self.keywords)
+        print('    global_keywords_list:', global_keywords_list)
         #self.text = [token.text for token in self.doc.tokens]
         self.tokens_list = []
         self.tokenize()
@@ -51,7 +55,26 @@ class SentSegmenter:
         self.doc.tag_ner(ner_tagger)
         self.doc.parse_syntax(syntax_parser)
         self.doc2sents()
-        self.texts = [token.text for tokens in self.tokens_list for token in tokens]
+        self.texts = []
+        for tokens in self.tokens_list:
+            for token in tokens:
+                token.lemmatize(morph_vocab)
+                self.texts.append(token.lemma)
+
+    # l - list of texts
+    # returns list of lemmatized words
+    def lemmatize(self, l):
+        res = []
+
+        kwdoc = Doc(' '.join(l))
+        kwdoc.segment(segmenter)
+        kwdoc.tag_morph(morph_tagger)
+
+        for token in kwdoc.tokens:
+            token.lemmatize(morph_vocab)
+            res.append(token.lemma)
+
+        return res
 
     # returns the only tokens
     # that have needed rel
@@ -145,7 +168,7 @@ class SentSegmenter:
         for token_sent in self.tokens_list:
 
             root_parts = self.sentence_division(token_sent)
-            word_bags = [[token.text for token in s] for s in root_parts]
+            word_bags = [[token.lemma for token in s] for s in root_parts]
             root_texts = [' '.join(part) for part in word_bags]
             #print('    root parts:', root_parts)
 
@@ -153,25 +176,26 @@ class SentSegmenter:
                 # obj
                 param = ('obj')
                 obj_parts, obj_ids = self.sentence_division(root_part_text, param, return_used_ids=True)
-                obj_word_bags = [[token.text for token in s if token.rel != 'punct'] for s in obj_parts]
+                obj_word_bags = [[token.lemma for token in s if token.rel != 'punct'] for s in obj_parts]
                 obj_word_bag = [word for sent in obj_word_bags for word in sent]
                 obj_texts = [' '.join(part) for part in obj_word_bags]
 
                 # nsubj
                 param = ('nsubj')
                 nsubj_parts, nsubj_ids = self.sentence_division(root_part_text, param, used_ids=obj_ids, return_used_ids=True)
-                nsubj_word_bags = [[token.text for token in s if token.rel != 'punct'] for s in nsubj_parts]
+                nsubj_word_bags = [[token.lemma for token in s if token.rel != 'punct'] for s in nsubj_parts]
                 nsubj_word_bag = [word for sent in nsubj_word_bags for word in sent]
-                if self.nsubj != set() and (self.nsubj & set(nsubj_word_bag)) == set():
-                    continue
                 nsubj_texts = [' '.join(part) for part in nsubj_word_bags]
 
                 # commit
                 commit_parts = self.sentence_division(root_part_text, used_ids=obj_ids + nsubj_ids)
-                commit_word_bags = [[token.text for token in s if token.rel != 'punct'] for s in commit_parts]
+                commit_word_bags = [[token.lemma for token in s if token.rel != 'punct'] for s in commit_parts]
                 commit_word_bag = [word for sent in commit_word_bags for word in sent]
                 #print('commit word bag 0:', [word for sent in word_bags for word in sent])
                 commit_texts = [' '.join(part) for part in commit_word_bags]
+
+                if self.keywords != set() and (self.keywords & set(nsubj_word_bag + commit_word_bag)) == set():
+                    continue
 
                 ans = {'obj' : obj_word_bag,
                         'nsubj' : nsubj_word_bag,
@@ -239,8 +263,8 @@ def load_models():
 
     names_extractor = NamesExtractor(morph_vocab)
 
-    global global_nsubj_list
-    global_nsubj_list = []
+    global global_keywords_list
+    global_keywords_list = []
     # end Natasha
 
     ELMO_COMMENTS = ELMoEmbedder("./model_comments/", elmo_output_names=['elmo'])
@@ -263,7 +287,7 @@ def simple_segmenter(ls):
     return clean_words[:MAX_LENGTH]
 
 
-def convert_text(text, nsubj=[]):
+def convert_text(text, keywords=[]):
     # original segmenter
     '''
     clean_words = [w.strip(',-\":;') for w in word_tokenize(text)]
@@ -272,7 +296,7 @@ def convert_text(text, nsubj=[]):
     
     # new segmenter
     #print('    nsubj:', nsubj)
-    segmented_text = SentSegmenter(text, nsubj)
+    segmented_text = SentSegmenter(text, keywords)
 
     rels = ('nsubj', 'commit')
     clean_words = segmented_text.return_spec_rel(rels)
@@ -282,26 +306,31 @@ def convert_text(text, nsubj=[]):
     return clean_words[:MAX_LENGTH]
 
 
-def preprocessing(texts, elmo, nsubj=[]):
+def preprocessing(texts, elmo, keywords=[]):
     #X = list(map(convert_text, texts))
-    X = [convert_text(text, nsubj) for text in texts]
+    X = [convert_text(text, keywords) for text in texts]
     embs = elmo(X)
     return embs
 
 
-def get_pred(text_batch, elmo, cnn_model, nsubj=[]):
-    embs = preprocessing(text_batch, elmo, nsubj)
+def get_pred(text_batch, elmo, cnn_model, keywords=[]):
+    embs = preprocessing(text_batch, elmo, keywords)
+<<<<<<< HEAD
+    #print('    embs:', embs)
+    #print('    len embs:', len(embs))
+=======
     print('    embs:', embs)
     print('    len embs:', len(embs))
+>>>>>>> e2805dd312fb281af732abfd2486f8a0d7193643
     matrix = np.zeros((len(embs), MAX_LENGTH, EMB_SIZE))
     for idx in range(len(embs)):
         matrix[idx, :len(embs[idx])] = embs[idx]
     pred = cnn_model.predict(matrix)
-    print('    pred:', pred)
+    #print('    pred:', pred)
     return pred
 
 
-def get_sentiment(texts, bs, nsubj=[]):
+def get_sentiment(texts, bs, keywords=[]):
     for i in range(int(np.ceil(len(texts) / bs))):
         text_batch = texts[i * bs:(i + 1) * bs]
         # change from this
@@ -314,12 +343,12 @@ def get_sentiment(texts, bs, nsubj=[]):
         with SESS.graph.as_default():
             K.set_session(SESS)
             if len(comments):
-                pred_comments = get_pred(comments, ELMO_COMMENTS, COMMENTS_CNN_MODEL, nsubj)
+                pred_comments = get_pred(comments, ELMO_COMMENTS, COMMENTS_CNN_MODEL, keywords)
                 answers[types == 0] = pred_comments
                 print('    pred_comments:', pred_comments)
                 print('    comments:', comments)
             if len(news):
-                pred_news = get_pred(news, ELMO_NEWS, NEWS_CNN_MODEL, nsubj)
+                pred_news = get_pred(news, ELMO_NEWS, NEWS_CNN_MODEL, keywords)
                 print('    pred_news:', pred_news)
                 print('    news:', news)
                 answers[types == 1] = pred_news
@@ -327,18 +356,18 @@ def get_sentiment(texts, bs, nsubj=[]):
         
 
         yield [{CLASS_DICT[class_id]: score for class_id, score in enumerate(row)} for row in answers]
-        # untill this
+        # until this
 
 
-def evaluate_sentiment(texts, nsubj=[]):
+def evaluate_sentiment(texts, keywords=[]):
     results = []
-    for res in get_sentiment(texts, BATCH_SiZE, nsubj):
+    for res in get_sentiment(texts, BATCH_SiZE, keywords):
         results.extend(res)
     return results
 
 
-def get_nsubj():
-    return global_nsubj_list
+def get_keywords():
+    return global_keywords_list
 
 
 load_models()
