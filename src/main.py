@@ -19,9 +19,11 @@ def get_best_class(request: Dict[str, List[str]]):
     resp = dict()
     for i in range(len(results)):
         classes = results[i]
-        nsubj = ' '.join(classes['nsubj'])
+        nsubj = classes['nsubj']
         del(classes['nsubj'])
         best_class = max(classes.items(), key=lambda x: x[1])[0]
+        print('    results[i]:', results[i])
+        print('    results[i]["nsubj"]', results[i]['nsubj'])
         resp[nsubj] = best_class
     return {"results": resp}
 
