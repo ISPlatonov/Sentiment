@@ -17,13 +17,12 @@ import requests
 requests.get('http://localhost:8000/sentiment/classes').json()
 # {'classes': ['negative', 'neutral', 'positive', 'skip', 'speech', 'humor']}
 
-requests.post('http://localhost:8000/sentiment/scores/best', json={"texts": ["Очень плохо", "Прекрасно", "Благодарю"]})
-# {'results': ['negative', 'positive', 'speech']}
+post(url='http://localhost:8000/sentiment/scores/best', json={'texts': ['Маша ела кашу. Вася пил сок.']}).json()
+# {'results': {'маша': 'neutral', 'вася': 'neutral'}}
 
-requests.post('http://localhost:8000/sentiment/scores', json={"texts": ["Очень плохо", "Прекрасно", "Благодарю"]}).json()
-# {'results': [{'negative': 0.90, 'neutral': 0.03, 'positive': 0.02, 'skip': 0.02, 'speech': 0.01, 'humor': 0.02},
-#              {'negative': 0.06, 'neutral': 0.05, 'positive': 0.71, 'skip': 0.09, 'speech': 0.04, 'humor': 0.05},
-#              {'negative': 0.02, 'neutral': 0.04, 'positive': 0.03, 'skip': 0.06, 'speech': 0.82, 'humor': 0.03}]}
+post(url='http://localhost:8000/sentiment/scores', json={'texts': ['Маша ела кашу. Вася пил сок.']}).json()
+# {'results': [{'negative': 0.07681494206190109, 'neutral': 0.5154229402542114, 'positive': 0.15101037919521332, 'skip': 0.12285768985748291, 'speech': 0.06735800951719284, 'humor': 0.0665360689163208, 'nsubj': ['маша']}, 
+#              {'negative': 0.06391550600528717, 'neutral': 0.6007885932922363, 'positive': 0.04485698789358139, 'skip': 0.18244265019893646, 'speech': 0.057975299656391144, 'humor': 0.05002095177769661, 'nsubj': ['вася']}]}
 
 # requests with keywords
 requests.post('http://localhost:8000/sentiment/rel/scores/best', json={"texts": ["Очень плохо", "Прекрасно", "Благодарю", "Баба Капа покормила Лунтика", "Волга стала очень грязной"], "keywords": ["Баба Капа", "Волга"]}).json()

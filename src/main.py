@@ -16,7 +16,16 @@ def get_score(request: Dict[str, List[str]]):
 @app.post("/sentiment/scores/best")
 def get_best_class(request: Dict[str, List[str]]):
     results = evaluate_sentiment(request["texts"])
-    return {"results": [max(text_res.items(), key=lambda x: x[1])[0] for text_res in results]}
+    resp = dict()
+    for i in range(len(results)):
+        classes = results[i]
+        nsubj = classes['nsubj']
+        del(classes['nsubj'])
+        best_class = max(classes.items(), key=lambda x: x[1])[0]
+        print('    results[i]:', results[i])
+        print('    results[i]["nsubj"]', results[i]['nsubj'])
+        resp[nsubj] = best_class
+    return {"results": resp}
 
 
 # new signal

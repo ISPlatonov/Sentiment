@@ -28,17 +28,19 @@ from natasha import (
 class SentSegmenter:
         
     def __init__(self, text, keywords=[]):
+        print('SentSegmenter')
+        global_var.prune()
         self.doc = Doc(text)
-        global_keywords_list = self.lemmatize(keywords)#[simple_segmenter(word) for word in keywords]
-        self.keywords = set(global_keywords_list)
-        print('    self.keywords:', self.keywords)
-        print('    global_keywords_list:', global_keywords_list)
+        global_var.keywords_list = self.lemmatize(keywords)
+        self.keywords = set(global_var.keywords_list)
+        #print('    self.keywords:', self.keywords)
+        #print('    global_keywords_list:', global_keywords_list)
         #self.text = [token.text for token in self.doc.tokens]
         self.tokens_list = []
         self.tokenize()
-        #print('    tokenized')
+        print('    tokenized')
         self.divide()
-        #print('    divided')
+        print('    divided')
 
     def divide(self):
         # list of jsons
@@ -130,13 +132,14 @@ class SentSegmenter:
                 continue
             si = s
             #print('si.id =', si.id, si.id not in root_ids)
-            while si.id not in rel_ids and si.id not in root_ids and si.id not in used_ids:#(not (True in [si.id in spii for spii in sent_parts_ids])):# and (si.head_id not in root_ids):
+            while si.id not in rel_ids and si.id not in root_ids and si.id not in used_ids and si not in branch:#(not (True in [si.id in spii for spii in sent_parts_ids])):# and (si.head_id not in root_ids):
                 #print(' si.id = ', si.id, ' ', si.id not in root_ids)
                 branch.append(si)
                 branch_ids.append(si.id)
                 # searching new si
-                for ns in sent:
                 #print('si.head_id =', si.head_id)
+                for ns in sent:
+                    #print('    ns.id =', ns.id)
                     if si.head_id == ns.id:
                         si = ns
                         break
@@ -165,16 +168,23 @@ class SentSegmenter:
 
             root_parts = self.sentence_division(token_sent)
             word_bags = [[token.lemma for token in s] for s in root_parts]
-            root_texts = [' '.join(part) for part in word_bags]
+            
             #print('    root parts:', root_parts)
 
             for root_part_text in root_parts:
                 # obj
                 param = ('obj')
                 obj_parts, obj_ids = self.sentence_division(root_part_text, param, return_used_ids=True)
+                
+
+                
                 obj_word_bags = [[token.lemma for token in s if token.rel != 'punct'] for s in obj_parts]
                 obj_word_bag = [word for sent in obj_word_bags for word in sent]
                 obj_texts = [' '.join(part) for part in obj_word_bags]
+                
+                
+                
+
 
                 # nsubj
                 param = ('nsubj')
@@ -192,12 +202,46 @@ class SentSegmenter:
 
                 if self.keywords != set() and (self.keywords & set(nsubj_word_bag + commit_word_bag)) == set():
                     continue
+                '''
+                if nsubj_word_bag != [] and obj_word_bag != []:
+                    obj_word_bags = []
+                    for s in obj_parts:
+                        snt = []
+                        for token in s:
+                            if token.rel == 'punct':
+                                continue
+                            elif token.rel == 'obj':
+                                snt.append(token.lemma)
+                            else:
+                                snt.append(token.text)
+                        obj_word_bags.append(snt)
+                    
+                    print('obj_texts:', obj_texts)
+                    for obj_text in obj_texts:
+                        segmented_text = SentSegmenter(obj_text)#, keywords)
+                        #rels = ('nsubj', 'commit')
+                        obj_sents = segmented_text.return_sents()#segmented_text.return_spec_rel(rels)
 
+                        self.sents.extend(obj_sents)
+                    
+                    ans = {'obj' : [],
+                        'nsubj' : nsubj_word_bag,
+                        'commit' : commit_word_bag}
+
+                elif nsubj_word_bag != []:
+                    ans = {'obj' : obj_word_bag,
+                        'nsubj' : nsubj_word_bag,
+                        'commit' : commit_word_bag}
+
+                else:
+                    continue
+                #print('    ans:', ans)
+                '''
                 ans = {'obj' : obj_word_bag,
                         'nsubj' : nsubj_word_bag,
                         'commit' : commit_word_bag}
-                #print('    ans:', ans)
                 
+                global_var.nsubj_list.append(nsubj_word_bag)
                 #yield ans
                 self.sents.append(ans)
 
@@ -211,8 +255,8 @@ class SentSegmenter:
     def return_sents(self):
         return self.sents
 
-    def print_texts(self):
-        print(self.texts)
+    def return_texts(self):
+        return self.texts
     
     def return_spec_rel(self, rels=('nsubj', 'commit')):
         result = []
@@ -221,11 +265,23 @@ class SentSegmenter:
             sent_res = []
             for rel in rels:
                 sent_res.extend(sent[rel])
-            txt = [word for word in self.texts if word in sent_res]
-            result.extend(txt)
+            #txt = [word for word in self.texts if word in sent_res]
+            result.append(sent_res)
             #print('    txt:', txt)
         return result
 
+
+class GlobalVariable:
+    keywords_list = []
+    nsubj_list = []
+    sents = []
+    texts = []
+
+    def prune(self):
+        self.keywords_list = []
+        self.nsubj_list = []
+        self.sents = []
+        self.texts = []
 
 def load_models():
     global SESS
@@ -259,8 +315,6 @@ def load_models():
 
     names_extractor = NamesExtractor(morph_vocab)
 
-    global global_keywords_list
-    global_keywords_list = []
     # end Natasha
 
     ELMO_COMMENTS = ELMoEmbedder("./model_comments/", elmo_output_names=['elmo'])
@@ -280,10 +334,11 @@ def load_models():
 def simple_segmenter(ls):
     clean_words = [w.strip(',-\":;') for w in word_tokenize(ls)]
     clean_words = [w for w in clean_words if w]
-    return clean_words[:MAX_LENGTH]
+    return [clean_words[:MAX_LENGTH]]
 
 
-def convert_text(text, keywords=[]):
+def convert_text(texts, keywords=[]):
+    print('convert_text')
     # original segmenter
     '''
     clean_words = [w.strip(',-\":;') for w in word_tokenize(text)]
@@ -292,44 +347,58 @@ def convert_text(text, keywords=[]):
     
     # new segmenter
     #print('    nsubj:', nsubj)
-    segmented_text = SentSegmenter(text, keywords)
+    for text in texts:
+        segmented_text = SentSegmenter(text, keywords)
 
-    rels = ('nsubj', 'commit')
-    clean_words = segmented_text.return_spec_rel(rels)
-    
-    print('clean words:', clean_words)
+        rels = ('nsubj', 'commit')
+        clean_words = segmented_text.return_spec_rel(rels)
+        
+        print('clean words:', clean_words)
+        nsubj_list = segmented_text.return_spec_rel(['nsubj'])
+        for i in range(len(clean_words)):
+            clean_words[i] = clean_words[i][:MAX_LENGTH]
+        
+        global_var.sents.extend(clean_words)
+        global_var.texts.extend([' '.join(sent) for sent in global_var.sents])
 
-    return clean_words[:MAX_LENGTH]
+    #return clean_words
 
 
 def preprocessing(texts, elmo, keywords=[]):
+    print('preprocessing')
     #X = list(map(convert_text, texts))
-    X = [convert_text(text, keywords) for text in texts]
+    sents = list(text.split() for text in texts)
+    X = sents
+    print('    sents:', sents)
     embs = elmo(X)
     return embs
 
 
 def get_pred(text_batch, elmo, cnn_model, keywords=[]):
+    print('get_pred')
     embs = preprocessing(text_batch, elmo, keywords)
     #print('    embs:', embs)
-    #print('    len embs:', len(embs))
+    print('    len embs:', len(embs))
     matrix = np.zeros((len(embs), MAX_LENGTH, EMB_SIZE))
     for idx in range(len(embs)):
         matrix[idx, :len(embs[idx])] = embs[idx]
     pred = cnn_model.predict(matrix)
-    #print('    pred:', pred)
+    print('    pred:', pred)
     return pred
 
 
-def get_sentiment(texts, bs, keywords=[]):
-    for i in range(int(np.ceil(len(texts) / bs))):
-        text_batch = texts[i * bs:(i + 1) * bs]
+def get_sentiment(bs, keywords=[]):
+    print('get_sentiment')
+    for i in range(int(np.ceil(len(global_var.texts) / bs))):
+        text_batch = global_var.texts[i * bs:(i + 1) * bs]
+        sent_batch = global_var.sents[i * bs:(i + 1) * bs]
         # change from this
         answers = np.zeros((len(text_batch), len(CLASS_DICT)))
         types = np.array(TEXT_TYPE_MODEL.predict(text_batch))
         comments = np.array(text_batch)[types == 0]
         news = np.array(text_batch)[types == 1]
         print('    text_batch:', text_batch)
+        print('    sent_batch:', sent_batch)
 
         with SESS.graph.as_default():
             K.set_session(SESS)
@@ -346,19 +415,22 @@ def get_sentiment(texts, bs, keywords=[]):
             
         
 
-        yield [{CLASS_DICT[class_id]: score for class_id, score in enumerate(row)} for row in answers]
+        results = [{CLASS_DICT[class_id]: score for class_id, score in enumerate(row)} for row in answers]
+        for i in range(len(results)):
+            results[i]['nsubj'] = global_var.nsubj_list.pop(0)
+        
+        yield [result for result in results]
         # until this
 
 
 def evaluate_sentiment(texts, keywords=[]):
+    print('evaluate_sentiment')
     results = []
-    for res in get_sentiment(texts, BATCH_SiZE, keywords):
+    convert_text(texts, keywords)
+    for res in get_sentiment(BATCH_SiZE, keywords):
         results.extend(res)
     return results
 
 
-def get_keywords():
-    return global_keywords_list
-
-
 load_models()
+global_var = GlobalVariable()
