@@ -23,7 +23,7 @@ def get_best_class(request: Dict[str, List[str]]):
         del(classes['nsubj'])
         best_class = max(classes.items(), key=lambda x: x[1])[0]
         print('    results[i]:', results[i])
-        print('    results[i]["nsubj"]', results[i]['nsubj'])
+        print('    results[i]["nsubj"]', nsubj)
         resp[nsubj] = best_class
     return {"results": resp}
 

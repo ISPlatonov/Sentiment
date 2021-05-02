@@ -33,9 +33,6 @@ class SentSegmenter:
         self.doc = Doc(text)
         global_var.keywords_list = self.lemmatize(keywords)
         self.keywords = set(global_var.keywords_list)
-        #print('    self.keywords:', self.keywords)
-        #print('    global_keywords_list:', global_keywords_list)
-        #self.text = [token.text for token in self.doc.tokens]
         self.tokens_list = []
         self.tokenize()
         print('    tokenized')
@@ -417,7 +414,7 @@ def get_sentiment(bs, keywords=[]):
 
         results = [{CLASS_DICT[class_id]: score for class_id, score in enumerate(row)} for row in answers]
         for i in range(len(results)):
-            results[i]['nsubj'] = global_var.nsubj_list.pop(0)
+            results[i]['nsubj'] = ' '.join(global_var.nsubj_list.pop(0))
         
         yield [result for result in results]
         # until this
